@@ -1,5 +1,32 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## 概要
+本リポジトリは、Next.js と ChatGPT を利用して GitHub の Pull Request を自動レビューするサンプルアプリです。GitHub OAuth により認証を行い、PR の diff を AI に送信して改善点を取得します。
+
+## 主要機能
+- GitHub OAuth を用いたユーザー認証
+- 指定リポジトリのオープン PR 一覧取得
+- Diff の取得と ChatGPT API へのレビュー依頼
+- AI から返された改善点の一覧表示
+
+## 開発手順
+1. 依存関係をインストール
+   ```bash
+   npm install
+   ```
+2. 開発サーバの起動
+   ```bash
+   npm run dev
+   ```
+
+## テスト方法
+Jest を利用した単体テストを以下のコマンドで実行できます。
+```bash
+npm test
+```
+
+詳細な要件は [docs/requirements.md](docs/requirements.md) を参照してください。
+
 ## Getting Started
 
 First, run the development server:
