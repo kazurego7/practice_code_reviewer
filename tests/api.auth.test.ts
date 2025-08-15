@@ -1,6 +1,24 @@
 import { createMocks } from 'node-mocks-http';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { loginHandler, sessionHandler, callbackHandler } from '@/lib/handlers/auth';
+import type { IronSession, IronSessionData } from 'iron-session';
+
+// IronSession 互換のセッションモックを生成
+const makeSessionMock = (overrides: Partial<IronSessionData> & {
+  save?: () => Promise<void>;
+  destroy?: () => void;
+  updateConfig?: () => void;
+} = {}): IronSession<IronSessionData> => {
+  const save = overrides.save ?? (async () => {});
+  const destroy = overrides.destroy ?? (() => {});
+  const updateConfig = overrides.updateConfig ?? (() => {});
+  return {
+    ...overrides,
+    save,
+    destroy,
+    updateConfig,
+  } as unknown as IronSession<IronSessionData>;
+};
 
 describe('API 認証', () => {
   const OLD_ENV = process.env;
@@ -35,7 +53,7 @@ describe('API 認証', () => {
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: 'GET',
     });
-    req.session = {};
+    req.session = makeSessionMock();
 
     await sessionHandler(req, res);
     expect(res._getStatusCode()).toBe(200);
@@ -49,8 +67,8 @@ describe('API 認証', () => {
       query: { code: 'abc' },
       headers: { host: 'localhost:3000' },
     });
-    const save = jest.fn();
-    req.session = { save };
+    const save = jest.fn(async () => {});
+    req.session = makeSessionMock({ save });
 
     // mock GitHub token exchange
     global.fetch = jest.fn().mockResolvedValue({
@@ -118,7 +136,7 @@ describe('API 認証', () => {
       query: { code: 'abc' },
       headers: { host: 'localhost:3000' },
     });
-    req.session = { save: jest.fn() };
+    req.session = makeSessionMock({ save: jest.fn(async () => {}) });
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 });
 
     await callbackHandler(req, res);
@@ -133,7 +151,7 @@ describe('API 認証', () => {
       query: { code: 'abc' },
       headers: { host: 'localhost:3000' },
     });
-    req.session = { save: jest.fn() };
+    req.session = makeSessionMock({ save: jest.fn(async () => {}) });
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ error: 'bad_things' }),
@@ -154,7 +172,7 @@ describe('API 認証', () => {
 
   test('トークンありなら GET /api/auth/session は authenticated=true を返す', async () => {
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({ method: 'GET' });
-    req.session = { ghAccessToken: 'tok' };
+    req.session = makeSessionMock({ ghAccessToken: 'tok' });
     await sessionHandler(req, res);
     expect(res._getStatusCode()).toBe(200);
     const json = JSON.parse(res._getData() as string);
