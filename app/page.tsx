@@ -1,113 +1,116 @@
-import Image from "next/image";
+"use client";
+
+import Image from 'next/image';
+import React from 'react';
+
+function isValidPrUrl(value: string): boolean {
+  try {
+    const u = new URL(value);
+    if (!/^https?:$/.test(u.protocol)) return false;
+    if (u.hostname !== 'github.com') return false;
+    // /owner/repo/pull/123 (optionally with more segments)
+    const parts = u.pathname.split('/').filter(Boolean);
+    if (parts.length < 4) return false;
+    const [owner, repo, pull, id] = parts;
+    return Boolean(owner && repo && pull === 'pull' && /^\d+$/.test(id ?? ''));
+  } catch {
+    return false;
+  }
+}
 
 export default function Home() {
+  const [prUrl, setPrUrl] = React.useState('');
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [auth, setAuth] = React.useState<null | { authenticated: boolean }>(null);
+
+  const valid = isValidPrUrl(prUrl);
+
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!valid || isSubmitting) return;
+    setIsSubmitting(true);
+    // P-03 実装まではダミー実行。将来は POST /api/review へ。
+    // eslint-disable-next-line no-console
+    console.log('レビュー実行: ', prUrl);
+    await new Promise((r) => setTimeout(r, 1200));
+    setIsSubmitting(false);
+  }
+
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/session', { cache: 'no-store' });
+        const json = (await res.json()) as { authenticated: boolean };
+        if (mounted) setAuth(json);
+      } catch {
+        if (mounted) setAuth({ authenticated: false });
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="font-sans min-h-screen p-8 sm:p-12">
+      <main className="mx-auto w-full max-w-[720px] flex flex-col gap-6">
+        <header className="flex items-center gap-3">
+          <Image className="dark:invert" src="/next.svg" alt="logo" width={120} height={28} />
+          <h1 className="text-lg font-semibold">PR レビュー</h1>
+        </header>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+        {auth === null && (
+          <div className="text-sm text-gray-600 dark:text-gray-300">セッション確認中…</div>
+        )}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-          <a
-            className="rounded border px-4 py-2 text-sm hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a]"
-            href="/api/auth/login"
-          >
-            GitHubでログイン（public_repo）
-          </a>
-        </div>
+        {auth?.authenticated === false && (
+          <div className="rounded border p-4 flex items-center justify-between">
+            <p className="text-sm">レビューを実行するには GitHub でログインしてください。</p>
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+            <a className="rounded bg-black text-white px-3 py-1.5 text-sm" href="/api/auth/login">
+              ログイン
+            </a>
+          </div>
+        )}
+
+        {auth?.authenticated && (
+          <section className="w-full">
+            <h2 className="mb-3 text-base font-semibold">PR 入力とレビュー実行（最小UI）</h2>
+            <form onSubmit={onSubmit} className="flex flex-col gap-3">
+              <label className="text-sm text-gray-700 dark:text-gray-300" htmlFor="pr-url">
+                GitHub PR の URL
+              </label>
+              <input
+                id="pr-url"
+                type="url"
+                inputMode="url"
+                placeholder="https://github.com/owner/repo/pull/123"
+                className="w-full rounded border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
+                value={prUrl}
+                onChange={(e) => setPrUrl(e.target.value.trim())}
+                disabled={isSubmitting}
+                aria-invalid={prUrl.length > 0 && !valid}
+              />
+              <div className="flex items-center gap-3">
+                <button
+                  type="submit"
+                  className="rounded bg-blue-600 text-white px-4 py-2 text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700"
+                  disabled={!valid || isSubmitting}
+                >
+                  レビュー
+                </button>
+                {isSubmitting && (
+                  <span className="text-sm text-gray-600 dark:text-gray-300">レビュー実行中…</span>
+                )}
+              </div>
+            </form>
+            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
+              入力は URL 形式を検証し、無効な場合はボタンが無効化されます。
+            </p>
+          </section>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
