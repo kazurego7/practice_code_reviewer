@@ -1,6 +1,11 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import Home from '@/app/page';
 
+// Next.js App Router のフックをモック
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),
+}));
+
 describe('P-02: PR 入力とレビュー実行（最小UI）', () => {
   beforeEach(() => {
     // 認証済みとしてモック
@@ -9,11 +14,11 @@ describe('P-02: PR 入力とレビュー実行（最小UI）', () => {
     });
   });
 
-  test('URL 検証によりボタンが有効/無効になる', () => {
+  test('URL 検証によりボタンが有効/無効になる', async () => {
     render(<Home />);
 
-    const input = screen.getByLabelText('GitHub PR の URL') as HTMLInputElement;
-    const button = screen.getByRole('button', { name: 'レビュー' });
+    const input = (await screen.findByLabelText('GitHub PR の URL')) as HTMLInputElement;
+    const button = await screen.findByRole('button', { name: 'レビュー' });
 
     expect(button).toBeDisabled();
 
@@ -29,8 +34,8 @@ describe('P-02: PR 入力とレビュー実行（最小UI）', () => {
   test('送信中は「レビュー実行中…」表示と入力無効化', async () => {
     render(<Home />);
 
-    const input = screen.getByLabelText('GitHub PR の URL') as HTMLInputElement;
-    const button = screen.getByRole('button', { name: 'レビュー' });
+    const input = (await screen.findByLabelText('GitHub PR の URL')) as HTMLInputElement;
+    const button = await screen.findByRole('button', { name: 'レビュー' });
 
     fireEvent.change(input, {
       target: { value: 'https://github.com/owner/repo/pull/456' },

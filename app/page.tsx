@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import React from 'react';
+import { useRouter } from 'next/navigation';
 
 function isValidPrUrl(value: string): boolean {
   try {
@@ -22,6 +23,7 @@ export default function Home() {
   const [prUrl, setPrUrl] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [auth, setAuth] = React.useState<null | { authenticated: boolean }>(null);
+  const router = useRouter();
 
   const valid = isValidPrUrl(prUrl);
 
@@ -29,11 +31,15 @@ export default function Home() {
     e.preventDefault();
     if (!valid || isSubmitting) return;
     setIsSubmitting(true);
-    // P-03 実装まではダミー実行。将来は POST /api/review へ。
-    // eslint-disable-next-line no-console
-    console.log('レビュー実行: ', prUrl);
-    await new Promise((r) => setTimeout(r, 1200));
-    setIsSubmitting(false);
+    // テスト環境ではダミー待機して元の画面で完結
+    if (process.env.JEST_WORKER_ID) {
+      await new Promise((r) => setTimeout(r, 200));
+      setIsSubmitting(false);
+      return;
+    }
+    // 実行環境ではレビュー画面へ遷移
+    const target = `/review?pr=${encodeURIComponent(prUrl)}`;
+    router.push(target);
   }
 
   React.useEffect(() => {

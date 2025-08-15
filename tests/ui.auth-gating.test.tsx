@@ -1,6 +1,11 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import Home from '@/app/page';
 
+// Next.js App Router のフックをモック
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn(), prefetch: jest.fn() }),
+}));
+
 describe('トップ: 認証状態で表示切り替え', () => {
   test('未認証だとログイン促しとリンクのみ表示', async () => {
     (global as any).fetch = jest.fn().mockResolvedValue({
@@ -33,4 +38,3 @@ describe('トップ: 認証状態で表示切り替え', () => {
     expect(screen.getByRole('button', { name: 'レビュー' })).toBeDisabled();
   });
 });
-
