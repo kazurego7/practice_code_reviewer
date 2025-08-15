@@ -1,62 +1,74 @@
-## チェックリスト
+## MVP バックログ（小さく速く届ける）
 
-### Vercel Node.js Functions の設定
-- [ ] 実装: `maxDuration` を 300 秒に設定
-- [ ] テスト: デプロイ後に設定が反映されていることを確認
+凡例: Priority=P0(最重要)/P1、Status=Todo/Doing/Done、Estimate=pt（相対）
 
-### GitHub OAuth (`public_repo` スコープ)
-- [ ] 実装: OAuth フローの実装
-- [ ] テスト: 認可〜トークン取得までの結合テスト
+---
 
-### PR URL 入力画面
-- [ ] 実装: PR URL 入力欄と「レビュー」ボタンを配置し、「GitHub で PR を検索」ボタンを設置
-- [ ] テスト: URL 形式の検証と各ボタンの動作を確認する E2E テスト
+### Epic: 認証の最小実装（OAuth ベースライン）
+- ユーザーストーリー: 開発者として、GitHub でサインインして保護画面に入れるようにしたい。
+  - 受け入れ条件:
+    - `GET /api/auth/login` → GitHub へリダイレクト（`public_repo`）
+    - `GET /api/auth/callback` → アクセストークンをサーバーセッションへ保存
+    - `GET /api/auth/session` → `{ authenticated: boolean }` を返す
+  - Priority: P0 / Estimate: 3pt / Status: Doing
+  - 備考: `IRON_SESSION_PASSWORD` を `.env.local` 管理（Git 追跡外）
 
-### `POST /api/review` エンドポイント
- - [x] 実装: diff 取得・検証ロジック、API レスポンス整形と LLM 呼び出しのリトライ
- - [x] テスト: 上記ロジックの単体テスト
- - [x] テスト: ルーティングと PR 指定エラー処理を含む結合テスト
+---
 
-### diff サイズ上限チェック
-- [ ] 実装: 200,000 文字超過で HTTP 413 を返すガードを実装
-- [ ] テスト: ガード処理の単体テスト
+### Epic: PR 入力とレビュー実行（最小UI）
+- ユーザーストーリー: 開発者として、PR の URL を入力して [レビュー] を押したい。
+  - 受け入れ条件:
+    - 入力欄 + [レビュー] ボタン（URL 形式チェック、無効化制御）
+    - 実行時は「レビュー実行中…」表示と入力無効化
+  - Priority: P0 / Estimate: 3pt / Status: Todo
+  - 依存: 認証ベースライン
 
-### OpenAI モデル固定
-- [ ] 実装: モデルを `gpt-5` に固定
-- [ ] テスト: モデル設定を確認する単体テスト
+---
 
-### OpenAI 呼び出し・リトライ
-- [ ] 実装: 失敗時の指数バックオフを実装し最大 2 回リトライ
-- [ ] テスト: リトライ動作の単体テスト
+### Epic: レビュー API 最小版（`POST /api/review`）
+- ユーザーストーリー: 開発者として、PR URL を渡すとレビュー結果（箇条書き）を受け取りたい。
+  - 受け入れ条件:
+    - リクエスト: `{ pr_url: string }`
+    - サーバーで `.diff` をプロキシ取得（クライアントから diff を送らない）
+    - サイズ上限: 200,000 chars 超過で HTTP 413
+    - モデル: `gpt-5` 固定、呼び出し 1 回（リトライはポストMVP）
+    - レスポンス: `{ issues: Array<{ message: string }> }`
+  - Priority: P0 / Estimate: 5pt / Status: Todo
 
-### ログ出力
-- [ ] 実装: `openai.tokens_prompt`, `openai.tokens_completion`, `openai.cost_est_jpy`, `github.rateRemaining`,
-  `github.rateResetEpoch`, `openai.errorRate`, `github.successRate` をログ出力
-- [ ] テスト: 出力内容を確認する単体テスト
+---
 
-### GitHub レート制限対策
-- [ ] 実装: 残回数 < 100 で待機し、`X-RateLimit-Reset` から再試行時刻を計算
-- [ ] テスト: 上記ロジックの単体テスト
+### Epic: 結果表示 UI（最小）
+- ユーザーストーリー: 開発者として、改善ポイントを一覧で確認したい。
+  - 受け入れ条件:
+    - 箇条書きで表示（Diff 折りたたみはポストMVP）
+  - Priority: P1 / Estimate: 2pt / Status: Todo
 
-### アクセストークン管理とセキュリティ
-- [ ] 実装: トークンをサーバ側で安全に保持し、クライアントから diff を送らない
-- [ ] テスト: トークン格納と取扱いを確認する結合テスト
+---
 
-### コスト上限チェック
-- [ ] 実装: 1 実行あたりの概算コスト計算と上限超過時の警告表示
-- [ ] テスト: 計算ロジックの単体テスト
-- [ ] テスト: 警告表示を含む結合テスト
+### Epic: テスト最小（スモーク）
+- ユーザーストーリー: 主要フローが壊れていないことを最小限で担保したい。
+  - 受け入れ条件:
+    - 単体: 413 ガード、API 正常系のレスポンス整形
+    - E2E: OAuth → レビュー実行 → 結果表示（ハッピーパス）
+  - Priority: P0 / Estimate: 3pt / Status: Todo
 
-### レビュー実行中 UI
-- [ ] 実装: レビュー実行中はスピナーまたはプログレスバーを表示し入力を無効化
-- [ ] テスト: ローディング表示と入力無効化を確認する E2E テスト
+---
 
-### レビュー結果の表示 UI
-- [ ] 実装: 改善ポイントを一覧表示し「＋ Diff を表示」で差分を展開
-- [ ] テスト: 表示と差分展開を確認する E2E テスト
+## ポストMVP バックログ（Parking Lot）
 
-### E2E テストシナリオ
-- [ ] OAuth → レビュー実行 → 結果表示の一連の流れを確認
-- [ ] 413 エラー時の画面動作を確認
-- [ ] レート制限発火時のバックオフ動作を確認
-- [ ] OpenAI API をモック化して安定検証
+- PR 一覧から選択（`GET /api/prs` と UI 連携）
+- レビュー UI の「＋ Diff を表示」展開
+- OpenAI 呼び出しの指数バックオフ（最大 2 回リトライ）
+- ロギング・メトリクス（OpenAI/GitHub/KPI/コスト見積）
+- GitHub レート制限対策（残回数<100の自動バックオフ）
+- コスト制御（¥50 超過見込み時の警告）
+- デプロイ設定（Vercel `maxDuration=300s`）
+- 環境変数ドキュメント整備（`GITHUB_CLIENT_ID/SECRET`, `NEXT_PUBLIC_BASE_URL` 等）
+- テスト拡充（エッジケース/E2E 全網羅、OpenAI モック）
+
+---
+
+## 備考
+- 仕様ソース: `docs/requirements.md`, `docs/specifications.md`
+- MVP は「ログイン → PR 入力 → レビュー結果一覧」の最短価値提供にフォーカス。
+- PostMVP の項目は MVP 完了後に段階導入する。
