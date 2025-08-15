@@ -42,7 +42,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const list = (await gh.json()) as any[];
+    type GitHubPr = { id: number; title: string; number: number; html_url: string };
+    const list = (await gh.json()) as GitHubPr[];
     const prs = list.map((pr) => ({ id: pr.id, title: pr.title, number: pr.number, url: pr.html_url }));
     return res.status(200).json({ owner, repo, prs });
   } catch {

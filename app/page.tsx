@@ -52,6 +52,7 @@ export default function Home() {
         </div>
 
         <div className="flex gap-4 items-center flex-col sm:flex-row">
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a
             className="rounded border px-4 py-2 text-sm hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a]"
             href="/api/auth/login"

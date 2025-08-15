@@ -2,7 +2,7 @@ import { createMocks } from 'node-mocks-http';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { loginHandler, sessionHandler, callbackHandler } from '@/lib/handlers/auth';
 
-describe('API Auth', () => {
+describe('API 認証', () => {
   const OLD_ENV = process.env;
   beforeEach(() => {
     jest.resetModules();
@@ -15,7 +15,7 @@ describe('API Auth', () => {
     process.env = OLD_ENV;
   });
 
-  test('GET /api/auth/login redirects to GitHub authorize', async () => {
+  test('GET /api/auth/login へのアクセスで GitHub 認可画面へリダイレクトされる', async () => {
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: 'GET',
       headers: { host: 'localhost:3000' },
@@ -31,11 +31,10 @@ describe('API Auth', () => {
     expect(loc).toContain(encodeURIComponent('http://localhost:3000/api/auth/callback'));
   });
 
-  test('GET /api/auth/session returns authenticated=false when no token', async () => {
+  test('トークン未設定なら GET /api/auth/session は authenticated=false を返す', async () => {
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: 'GET',
     });
-    // @ts-expect-error: test injection
     req.session = {};
 
     await sessionHandler(req, res);
@@ -44,18 +43,16 @@ describe('API Auth', () => {
     expect(json.authenticated).toBe(false);
   });
 
-  test('GET /api/auth/callback saves token and redirects', async () => {
+  test('GET /api/auth/callback はトークンを保存しトップへリダイレクトする', async () => {
     const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
       method: 'GET',
       query: { code: 'abc' },
       headers: { host: 'localhost:3000' },
     });
     const save = jest.fn();
-    // @ts-expect-error: test injection
     req.session = { save };
 
     // mock GitHub token exchange
-    // @ts-expect-error: inject fetch mock
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ access_token: 'tok_123' }),
@@ -65,7 +62,102 @@ describe('API Auth', () => {
 
     expect(global.fetch).toHaveBeenCalled();
     expect(save).toHaveBeenCalled();
+    expect(req.session.ghAccessToken).toBe('tok_123');
     expect(res._getStatusCode()).toBe(302);
     expect(res._getHeaders()['location']).toBe('/');
+  });
+
+  // --- Guards & error paths ---
+
+  test('POST /api/auth/login は 405 を返す', async () => {
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({ method: 'POST' });
+    await loginHandler(req, res);
+    expect(res._getStatusCode()).toBe(405);
+    expect(res._getHeaders()['allow']).toBe('GET');
+  });
+
+  test('GITHUB_CLIENT_ID 未設定時は GET /api/auth/login が 500 を返す', async () => {
+    delete process.env.GITHUB_CLIENT_ID;
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({ method: 'GET' });
+    await loginHandler(req, res);
+    expect(res._getStatusCode()).toBe(500);
+    const json = JSON.parse(res._getData() as string);
+    expect(json.error).toContain('GITHUB_CLIENT_ID');
+  });
+
+  test('POST /api/auth/callback は 405 を返す', async () => {
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({ method: 'POST' });
+    await callbackHandler(req, res);
+    expect(res._getStatusCode()).toBe(405);
+    expect(res._getHeaders()['allow']).toBe('GET');
+  });
+
+  test('code が無いと GET /api/auth/callback は 400 を返す', async () => {
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({ method: 'GET' });
+    await callbackHandler(req, res);
+    expect(res._getStatusCode()).toBe(400);
+    const json = JSON.parse(res._getData() as string);
+    expect(json.error).toContain('code');
+  });
+
+  test('認証環境変数が無いと GET /api/auth/callback は 500 を返す', async () => {
+    delete process.env.GITHUB_CLIENT_SECRET;
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: 'GET',
+      query: { code: 'abc' },
+    });
+    await callbackHandler(req, res);
+    expect(res._getStatusCode()).toBe(500);
+    const json = JSON.parse(res._getData() as string);
+    expect(json.error).toContain('GITHUB_CLIENT_ID/GITHUB_CLIENT_SECRET');
+  });
+
+  test('GitHub トークン交換が失敗すると GET /api/auth/callback は 500 を返す', async () => {
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: 'GET',
+      query: { code: 'abc' },
+      headers: { host: 'localhost:3000' },
+    });
+    req.session = { save: jest.fn() };
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 });
+
+    await callbackHandler(req, res);
+    expect(res._getStatusCode()).toBe(500);
+    const json = JSON.parse(res._getData() as string);
+    expect(json.error).toContain('GitHub token exchange failed');
+  });
+
+  test('access_token が無いと GET /api/auth/callback は 500 を返す', async () => {
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({
+      method: 'GET',
+      query: { code: 'abc' },
+      headers: { host: 'localhost:3000' },
+    });
+    req.session = { save: jest.fn() };
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ error: 'bad_things' }),
+    });
+
+    await callbackHandler(req, res);
+    expect(res._getStatusCode()).toBe(500);
+    const json = JSON.parse(res._getData() as string);
+    expect(json.error).toContain('GitHub token missing');
+  });
+
+  test('POST /api/auth/session は 405 を返す', async () => {
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({ method: 'POST' });
+    await sessionHandler(req, res);
+    expect(res._getStatusCode()).toBe(405);
+    expect(res._getHeaders()['allow']).toBe('GET');
+  });
+
+  test('トークンありなら GET /api/auth/session は authenticated=true を返す', async () => {
+    const { req, res } = createMocks<NextApiRequest, NextApiResponse>({ method: 'GET' });
+    req.session = { ghAccessToken: 'tok' };
+    await sessionHandler(req, res);
+    expect(res._getStatusCode()).toBe(200);
+    const json = JSON.parse(res._getData() as string);
+    expect(json.authenticated).toBe(true);
   });
 });

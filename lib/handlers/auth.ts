@@ -75,19 +75,16 @@ export async function callbackHandler(req: NextApiRequest, res: NextApiResponse)
   const redirectUri = `${getBaseUrl(req)}/api/auth/callback`;
   try {
     const token = await exchangeCodeForToken({ clientId, clientSecret, code, redirectUri });
-    // @ts-expect-error: iron-session で拡張される想定
-    req.session = req.session || {};
-    // @ts-expect-error: iron-session で拡張される想定
-    req.session.ghAccessToken = token;
-    // @ts-expect-error: iron-session で拡張される想定
-    if (typeof req.session.save === 'function') {
-      // @ts-expect-error
-      await req.session.save();
+    if (!req.session) {
+      return res.status(500).json({ error: 'session not initialized' });
     }
+    req.session.ghAccessToken = token;
+    await req.session.save();
     res.status(302).setHeader('Location', '/');
     return res.end();
-  } catch (e: any) {
-    return res.status(500).json({ error: e?.message ?? 'callback error' });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'callback error';
+    return res.status(500).json({ error: message });
   }
 }
 
@@ -96,8 +93,6 @@ export async function sessionHandler(req: NextApiRequest, res: NextApiResponse) 
     res.setHeader('Allow', 'GET');
     return res.status(405).end('Method Not Allowed');
   }
-  // @ts-expect-error: iron-session により拡張
   const authenticated = Boolean(req.session?.ghAccessToken);
   return res.status(200).json({ authenticated });
 }
-
