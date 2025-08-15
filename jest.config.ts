@@ -4,6 +4,7 @@ const config: Config = {
   preset: 'ts-jest',
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/tests/setupTests.ts'],
+  testPathIgnorePatterns: ['/node_modules/', '/agents-local/'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1'
   },

@@ -1,5 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# codex/エージェントが読み書きするローカル専用一時ファイル
+agents-local/
+
 # dependencies
 /node_modules
 /.pnp
