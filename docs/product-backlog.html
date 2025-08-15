@@ -92,7 +92,7 @@
       overflow-wrap: anywhere;
     }
 
-    /* 列幅：ID/優先度/状態を最小化、Epic/ストーリー広め（colgroupで強制） */
+    /* 列幅：ID/優先度/状態を最小化、エピック/ストーリー広め（colgroupで強制） */
     col.id {
       width: 56px;
     }
@@ -166,7 +166,7 @@
               <div class="small"><strong>ID</strong> <span id="d-id">-</span></div>
             </div>
             <div class="col">
-              <div class="small"><strong>Epic</strong> <span id="d-epic">-</span></div>
+              <div class="small"><strong>エピック</strong> <span id="d-epic">-</span></div>
             </div>
             <div class="col">
               <div class="small"><strong>優先度</strong> <span id="d-priority">-</span></div>
@@ -276,7 +276,7 @@
           if (h === 'ID') col.className = 'id';
           else if (h === '優先度') col.className = 'priority';
           else if (h === '状態') col.className = 'status';
-          else if (h === 'Epic') col.className = 'epic';
+          else if (h === 'エピック') col.className = 'epic';
           else if (h === 'ユーザーストーリー') col.className = 'story';
           colgroup.appendChild(col);
         });
@@ -361,7 +361,7 @@
         }
         ph.classList.add('d-none'); inner.classList.remove('d-none');
         $('#d-id').textContent = rec['ID'] ?? '';
-        $('#d-epic').textContent = rec['Epic'] ?? '';
+        $('#d-epic').textContent = rec['エピック'] ?? '';
         $('#d-priority').textContent = rec['優先度'] ?? '';
         $('#d-status').textContent = rec['状態'] ?? '';
         $('#d-story').textContent = rec['ユーザーストーリー'] ?? '';

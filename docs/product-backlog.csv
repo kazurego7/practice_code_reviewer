@@ -1,4 +1,4 @@
-ID,Epic,ユーザーストーリー,優先度,状態,受け入れ条件,備考
+ID,エピック,ユーザーストーリー,優先度,状態,受け入れ条件,備考
 P-01,認証の最小実装（OAuth ベースライン）,"開発者として、GitHub でサインインして保護画面に入れるようにしたい",高,進行中,"- GET /api/auth/login → GitHub へリダイレクト（public_repo）
 - GET /api/auth/callback → アクセストークンをサーバーセッションへ保存
 - GET /api/auth/session → { authenticated: boolean } を返す","IRON_SESSION_PASSWORD を .env.local 管理（Git 追跡外）"
