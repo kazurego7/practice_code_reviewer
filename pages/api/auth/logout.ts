@@ -1,17 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSession } from '@/lib/session';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function logout(
+  req: NextApiRequest,
+  res: NextApiResponse
+) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
-
   const session = await getSession(req, res);
-  if (!session.githubToken) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-
-  // TODO: GitHub の PR diff 取得とレビュー生成を実装
+  await session.destroy();
   return res.status(200).json({ ok: true });
 }

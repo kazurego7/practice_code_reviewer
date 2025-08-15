@@ -50,6 +50,23 @@ export default function Home() {
             Read our docs
           </a>
         </div>
+
+        <div className="flex gap-4 items-center flex-col sm:flex-row">
+          <a
+            className="rounded border px-4 py-2 text-sm hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a]"
+            href="/api/auth/login"
+          >
+            GitHubでログイン（public_repo）
+          </a>
+          <form method="post" action="/api/auth/logout">
+            <button
+              className="rounded border px-4 py-2 text-sm hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a]"
+              type="submit"
+            >
+              ログアウト
+            </button>
+          </form>
+        </div>
       </main>
       <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
         <a
