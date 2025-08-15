@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "npm",
+      "script": "dev",
+      "label": "npm: dev",
+      "problemMatcher": [],
+      "detail": "Start Next.js dev server"
+    },
+    {
+      "type": "npm",
+      "script": "test",
+      "label": "npm: test",
+      "problemMatcher": [],
+      "detail": "Run Jest tests"
+    },
+    {
+      "type": "npm",
+      "script": "build",
+      "label": "npm: build",
+      "problemMatcher": [],
+      "detail": "Build Next.js"
+    }
+  ]
+}
+
