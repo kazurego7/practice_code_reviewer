@@ -1,15 +1,11 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { getSession } from '@/lib/session';
+import { getIronSession } from 'iron-session';
+import { sessionOptions } from '@/lib/session';
+import { sessionHandler } from '@/lib/handlers/auth';
 
-export default async function session(
-  req: NextApiRequest,
-  res: NextApiResponse
-) {
-  if (req.method !== 'GET') {
-    res.setHeader('Allow', ['GET']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
-  }
-  const s = await getSession(req, res);
-  const authenticated = Boolean(s.githubToken);
-  res.status(200).json({ authenticated });
+export { sessionHandler };
+export default async function handler(req: any, res: any) {
+  // セッションを用意してハンドラに委譲
+  // @ts-expect-error: attach for downstream handlers
+  req.session = await getIronSession(req, res, sessionOptions());
+  return sessionHandler(req, res);
 }
