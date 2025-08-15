@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Product Backlog</title>
+
+  <!-- Bootstrap 5 (CSS & JS) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Split.js (resizable panes) -->
+  <script src="https://cdn.jsdelivr.net/npm/split.js@1.6.5/dist/split.min.js"></script>
+  <!-- PapaParse (CSV) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <style>
+    :root {
+      --border: #e0e0e0;
+      --detail-min: 280px;
+      --detail-max: 720px;
+    }
+
+    html,
+    body {
+      height: 100%;
+    }
+
+    body {
+      padding: 0;
+    }
+
+    /* レイアウト（Bootstrapのflexを活用 + Split.jsのgutter） */
+    #content {
+      height: calc(100vh - var(--topbar-h, 116px));
+      min-height: 240px;
+    }
+
+    .pane {
+      overflow: auto;
+    }
+
+    #left {
+      border-right: 1px solid var(--border);
+    }
+
+    #right {
+      min-width: var(--detail-min);
+      max-width: var(--detail-max);
+      background: #fcfcff;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .gutter {
+      background: #eee;
+      cursor: col-resize;
+      position: relative;
+    }
+
+    .gutter.gutter-horizontal {
+      width: 6px;
+    }
+
+    .gutter::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+    }
+
+    /* テーブル（省略なし・折り返し） */
+    table {
+      table-layout: fixed;
+      width: 100%;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      background: #fff;
+      z-index: 10;
+    }
+
+    td,
+    th {
+      vertical-align: top;
+    }
+
+    td {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    /* 列幅：ID/優先度/状態を最小化、Epic/ストーリー広め（colgroupで強制） */
+    col.id {
+      width: 56px;
+    }
+
+    col.priority {
+      width: 64px;
+    }
+
+    col.status {
+      width: 80px;
+    }
+
+    col.epic {
+      width: 24%;
+    }
+
+    col.story {
+      width: 44%;
+    }
+
+    /* 選択行ハイライト */
+    tbody tr.selected>td {
+      background: #e8f0fe !important;
+    }
+
+    /* 詳細の改行を反映 */
+    #d-criteria,
+    #d-note {
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+
+<body class="bg-white">
+  <!-- Topbar -->
+  <header id="topbar" class="position-sticky top-0 bg-white border-bottom">
+    <div class="d-flex align-items-center gap-2 px-3 py-2">
+      <h1 class="h5 m-0 fw-bold">Product Backlog</h1>
+      <span id="count" class="text-secondary small"></span>
+      <div class="ms-auto d-flex align-items-center gap-2">
+        <span id="source" class="badge text-bg-light">source: -</span>
+        <button id="toggle" class="btn btn-sm btn-outline-secondary">折りたたみ/展開</button>
+      </div>
+    </div>
+    <div class="px-3 pb-2">
+      <input id="q" type="search" class="form-control" placeholder="Filter…（全列対象 / スペース区切りAND）">
+    </div>
+  </header>
+
+  <!-- Content (Split.js で左右分割) -->
+  <div id="content" class="d-flex">
+    <!-- 左: テーブル -->
+    <div id="left" class="pane p-2">
+      <div id="table" class="table-responsive"></div>
+    </div>
+    <div class="gutter gutter-horizontal"></div>
+
+    <!-- 右: 詳細 -->
+    <aside id="right" class="pane">
+      <div class="d-flex align-items-center justify-content-between gap-2 px-3 py-2 border-bottom bg-white">
+        <h2 class="h6 m-0">詳細</h2>
+        <button id="clear" class="btn btn-sm btn-outline-secondary">解除</button>
+      </div>
+      <div id="detailBody" class="p-3">
+        <div class="placeholder text-secondary small">
+          行を選択すると「ユーザーストーリー / 受け入れ条件 / 備考」などの詳細を表示します。
+        </div>
+        <div id="detailInner" class="d-none">
+          <div class="row row-cols-1 row-cols-md-2 g-2">
+            <div class="col">
+              <div class="small"><strong>ID</strong> <span id="d-id">-</span></div>
+            </div>
+            <div class="col">
+              <div class="small"><strong>Epic</strong> <span id="d-epic">-</span></div>
+            </div>
+            <div class="col">
+              <div class="small"><strong>優先度</strong> <span id="d-priority">-</span></div>
+            </div>
+            <div class="col">
+              <div class="small"><strong>状態</strong> <span id="d-status">-</span></div>
+            </div>
+          </div>
+          <div class="mt-3">
+            <div class="fw-semibold small mb-1">ユーザーストーリー</div>
+            <div id="d-story" class="border rounded p-2 bg-white"></div>
+          </div>
+          <div class="mt-3">
+            <div class="fw-semibold small mb-1">受け入れ条件</div>
+            <div id="d-criteria" class="border rounded p-2 bg-white"></div>
+          </div>
+          <div class="mt-3">
+            <div class="fw-semibold small mb-1">備考</div>
+            <div id="d-note" class="border rounded p-2 bg-white"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    (() => {
+      const $ = s => document.querySelector(s);
+      const CSV_FILE = new URLSearchParams(location.search).get('csv') || 'product-backlog.csv';
+      const HIDDEN_FOR_TABLE = ['受け入れ条件', '備考']; // ←テーブルでは隠し、右パネルに表示
+      const LS_WIDTH = 'pb_detail_width';
+
+      // Topbar 高さをCSSへ
+      const topbar = $('#topbar');
+      const setTopbarHeight = () => {
+        const h = topbar.getBoundingClientRect().height;
+        document.documentElement.style.setProperty('--topbar-h', h + 'px');
+      };
+      new ResizeObserver(setTopbarHeight).observe(topbar); setTopbarHeight();
+
+      // ===== Split.js (左右リサイズ) =====
+      let savedW = parseInt(localStorage.getItem(LS_WIDTH)) || 380;
+      let initSizes = [100 - savedW / Math.max(600, window.innerWidth) * 100, savedW / Math.max(600, window.innerWidth) * 100];
+      if (!isFinite(initSizes[0]) || initSizes[0] <= 0 || initSizes[0] >= 100) initSizes = [70, 30];
+
+      const split = Split(['#left', '#right'], {
+        sizes: initSizes,
+        minSize: [200, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--detail-min')) || 280],
+        maxSize: [Infinity, parseInt(getComputedStyle(document.documentElement).getPropertyValue('--detail-max')) || 720],
+        gutterSize: 6,
+        elementStyle: (dim, size, gutter) => ({ 'flex-basis': `calc(${size}% - ${gutter / 2}px)` }),
+        gutterStyle: (dim, gutter) => ({ 'flex-basis': `${gutter}px` }),
+        onDragEnd: () => {
+          const rightWidth = $('#right').getBoundingClientRect().width;
+          localStorage.setItem(LS_WIDTH, Math.round(rightWidth));
+        }
+      });
+
+      // 折りたたみ/展開
+      let collapsed = false;
+      $('#toggle').addEventListener('click', () => {
+        const gutter = document.querySelector('.gutter');
+        if (!collapsed) {
+          $('#right').style.display = 'none';
+          gutter.style.display = 'none';
+          $('#left').style.flexBasis = '100%';
+          collapsed = true;
+        } else {
+          $('#right').style.display = '';
+          gutter.style.display = '';
+          const total = $('#content').getBoundingClientRect().width;
+          const saved = parseInt(localStorage.getItem(LS_WIDTH)) || 380;
+          const rightPercent = Math.min(50, Math.max(20, saved / total * 100));
+          split.setSizes([100 - rightPercent, rightPercent]);
+          collapsed = false;
+        }
+      });
+
+      // ===== CSV 読み込み (PapaParse) =====
+      let header = [], rows = [], filtered = [], sortKey = null, sortDir = 1, selectedId = null;
+
+      async function loadCSV() {
+        const res = await fetch(CSV_FILE, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`Failed to load: ${CSV_FILE}`);
+        const text = await res.text();
+        const parsed = Papa.parse(text, { header: true, skipEmptyLines: true });
+        if (parsed.errors?.length) console.warn(parsed.errors);
+        header = parsed.meta.fields || [];
+        rows = parsed.data || [];
+        filtered = rows.slice();
+        render();
+        $('#source').textContent = `source: ${CSV_FILE}`;
+      }
+
+      // ===== 描画 =====
+      function render() {
+        const headers = header.filter(h => !HIDDEN_FOR_TABLE.includes(h));
+
+        // テーブル生成 (Bootstrapのテーブルクラス活用)
+        const table = document.createElement('table');
+        table.className = 'table table-hover table-sm align-top';
+
+        // colgroup で列幅固定
+        const colgroup = document.createElement('colgroup');
+        headers.forEach(h => {
+          const col = document.createElement('col');
+          if (h === 'ID') col.className = 'id';
+          else if (h === '優先度') col.className = 'priority';
+          else if (h === '状態') col.className = 'status';
+          else if (h === 'Epic') col.className = 'epic';
+          else if (h === 'ユーザーストーリー') col.className = 'story';
+          colgroup.appendChild(col);
+        });
+        table.appendChild(colgroup);
+
+        // thead
+        const thead = document.createElement('thead');
+        const trh = document.createElement('tr');
+        headers.forEach(h => {
+          const th = document.createElement('th');
+          th.textContent = h; th.dataset.key = h;
+          th.className = 'sticky-top bg-white';
+          th.addEventListener('click', () => sortBy(h));
+          trh.appendChild(th);
+        });
+        thead.appendChild(trh);
+        table.appendChild(thead);
+
+        // tbody
+        const tbody = document.createElement('tbody');
+        filtered.forEach(rec => {
+          const tr = document.createElement('tr');
+          tr.tabIndex = 0;
+          tr.addEventListener('click', () => selectRow(rec));
+          tr.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { selectRow(rec); e.preventDefault(); }
+          });
+          headers.forEach(h => {
+            const td = document.createElement('td');
+            let v = rec[h] ?? '';
+            // 状態に簡易カラー
+            if (h === '状態') {
+              const map = { '完了': 'text-success fw-semibold', '進行中': 'text-warning fw-semibold', '未着手': 'text-muted fw-semibold' };
+              if (map[v]) td.className = map[v];
+              td.classList.add('text-center');
+            }
+            if (h === 'ID' || h === '優先度') td.classList.add('text-center');
+            td.textContent = v;
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+        table.appendChild(tbody);
+
+        const mount = $('#table'); mount.innerHTML = ''; mount.appendChild(table);
+        $('#count').textContent = `${filtered.length} / ${rows.length} rows`;
+        highlightSelected();
+      }
+
+      function sortBy(key) {
+        if (sortKey === key) sortDir = -sortDir; else { sortKey = key; sortDir = 1; }
+        filtered.sort((a, b) => String(a[key] ?? '').localeCompare(String(b[key] ?? ''), 'ja') * sortDir);
+        render();
+      }
+
+      function applyFilter(q) {
+        const tokens = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        if (!tokens.length) filtered = rows.slice();
+        else filtered = rows.filter(rec => tokens.every(tok => header.some(h => String(rec[h] ?? '').toLowerCase().includes(tok))));
+        if (selectedId != null && !filtered.some(r => String(r['ID']) === String(selectedId))) { selectedId = null; renderDetail(null); }
+      }
+
+      function selectRow(rec) { selectedId = rec['ID'] ?? null; renderDetail(rec); highlightSelected(); }
+
+      function highlightSelected() {
+        const rowsEls = document.querySelectorAll('tbody tr');
+        rowsEls.forEach(tr => tr.classList.remove('selected'));
+        if (selectedId == null) return;
+        filtered.forEach((rec, i) => { if (String(rec['ID']) === String(selectedId)) rowsEls[i]?.classList.add('selected'); });
+      }
+
+      // ★ 修正1: null時に詳細を完全クリア
+      function renderDetail(rec) {
+        const inner = $('#detailInner'); const ph = $('#detailBody .placeholder');
+        if (!rec) {
+          // 中身をクリアしてからプレースホルダ表示
+          ['d-id', 'd-epic', 'd-priority', 'd-status', 'd-story', 'd-criteria', 'd-note']
+            .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ''; });
+          inner.classList.add('d-none');
+          ph.classList.remove('d-none');
+          return;
+        }
+        ph.classList.add('d-none'); inner.classList.remove('d-none');
+        $('#d-id').textContent = rec['ID'] ?? '';
+        $('#d-epic').textContent = rec['Epic'] ?? '';
+        $('#d-priority').textContent = rec['優先度'] ?? '';
+        $('#d-status').textContent = rec['状態'] ?? '';
+        $('#d-story').textContent = rec['ユーザーストーリー'] ?? '';
+        $('#d-criteria').textContent = rec['受け入れ条件'] ?? '';
+        $('#d-note').textContent = rec['備考'] ?? '';
+      }
+
+      // ★ 修正2: 解除ボタンで完全クリア（IDリセット/ハイライト除去/フォーカス復帰）
+      function clearSelection() {
+        selectedId = null;
+        renderDetail(null);
+        document.querySelectorAll('tbody tr').forEach(tr => tr.classList.remove('selected'));
+        const firstRow = document.querySelector('tbody tr');
+        if (firstRow) firstRow.focus();
+      }
+
+      // ===== init & events =====
+      loadCSV().catch(e => {
+        $('#table').innerHTML = `<div class="text-secondary small px-2">CSVを読み込めませんでした: ${e.message}</div>`;
+      });
+      $('#q').addEventListener('input', () => { applyFilter($('#q').value); render(); });
+      document.getElementById('clear').addEventListener('click', clearSelection);
+
+      // Ctrl/Cmd+R でCSV再読込
+      document.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') { loadCSV(); e.preventDefault(); }
+      });
+    })();
+  </script>
+
+  <!-- Bootstrap JS (Popper含む) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
