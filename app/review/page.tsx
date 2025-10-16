@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import React from 'react';
 import { useSearchParams } from 'next/navigation';
+import { CatInvasionOverlay } from '@/app/components/CatInvasionOverlay';
 
 function isValidPrUrl(value: string): boolean {
   try {
@@ -23,6 +24,12 @@ type ReviewResponse = { model: string; result: string[]; via?: 'openai' | 'dummy
 export default function ReviewPage() {
   const params = useSearchParams();
   const pr = params.get('pr') ?? '';
+  const catFlag = params.get('cat');
+  const catMode = React.useMemo(() => {
+    if (catFlag === null) return false;
+    const normalized = catFlag.trim().toLowerCase();
+    return normalized === '' || normalized === '1' || normalized === 'true' || normalized === 'on';
+  }, [catFlag]);
   const [auth, setAuth] = React.useState<null | { authenticated: boolean }>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -101,20 +108,20 @@ export default function ReviewPage() {
         {auth?.authenticated && (
           <section className="w-full">
             <div className="mb-2 text-sm text-gray-600 dark:text-gray-300 break-all">対象PR: {pr || '-'}</div>
-            {loading && <div className="text-sm">レビュー実行中…</div>}
-            {error && (
+            {loading && !catMode && <div className="text-sm">レビュー実行中…</div>}
+            {error && !catMode && (
               <div className="text-sm text-red-600 dark:text-red-400" role="alert">
                 エラー: {error}
               </div>
             )}
-            {data && (
+            {data && !catMode && (
               <ul className="list-disc pl-5 text-sm">
                 {data.result.map((line, i) => (
                   <li key={i}>{line}</li>
                 ))}
               </ul>
             )}
-            {data && (
+            {data && !catMode && (
               <div className="mt-3 text-xs text-gray-500">
                 ソース: {data.via === 'openai' ? 'OpenAI（gpt-5）' : 'ダミー'}
               </div>
@@ -122,6 +129,17 @@ export default function ReviewPage() {
           </section>
         )}
       </main>
+      <CatInvasionOverlay
+        active={Boolean(catMode && auth?.authenticated)}
+        imageSrc="/cat-invasion.svg"
+        caption={
+          loading
+            ? 'レビュー結果を準備中です…'
+            : error
+              ? '猫が乱入中：現在レビュー結果を表示できません。'
+              : '猫が乱入しています…'
+        }
+      />
     </div>
   );
 }

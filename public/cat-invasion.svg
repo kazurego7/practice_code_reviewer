@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">Full screen cat silhouette</title>
+  <desc id="desc">A stylised silhouette of a cat sitting on a cushion with playful gradients.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef3c7" />
+      <stop offset="35%" stop-color="#fbcfe8" />
+      <stop offset="100%" stop-color="#a5b4fc" />
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.7" />
+      <stop offset="60%" stop-color="#fdf2f8" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#f5d0fe" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="cat" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1f2937" />
+      <stop offset="100%" stop-color="#111827" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)" />
+  <circle cx="600" cy="360" r="300" fill="url(#glow)" />
+  <ellipse cx="600" cy="650" rx="260" ry="80" fill="#fde68a" opacity="0.6" />
+  <ellipse cx="600" cy="670" rx="320" ry="90" fill="#f59e0b" opacity="0.25" />
+  <path
+    d="M630 210c20-40 70-70 110-70-10 40 0 80 30 120 30 40 70 120 10 190 60 40 60 150-20 210-100 70-320 70-420 0-80-60-90-170-20-210-60-70-20-150 10-190 30-40 40-80 30-120 40 0 90 30 110 70 20 40 110 40 130 0z"
+    fill="url(#cat)"
+  />
+  <circle cx="720" cy="290" r="26" fill="#fef08a" />
+  <circle cx="720" cy="290" r="12" fill="#facc15" />
+  <circle cx="720" cy="290" r="6" fill="#111827" />
+  <path d="M640 260c40 40 140 40 180 0" stroke="#fbbf24" stroke-width="8" stroke-linecap="round" />
+  <path d="M520 560c40 40 120 40 160 0" stroke="#fbbf24" stroke-width="12" stroke-linecap="round" opacity="0.5" />
+  <path d="M430 500c-20-40-80-50-120-10" stroke="#c084fc" stroke-width="14" stroke-linecap="round" opacity="0.6" />
+  <path d="M770 510c30-35 100-30 140 10" stroke="#c084fc" stroke-width="14" stroke-linecap="round" opacity="0.6" />
+</svg>
